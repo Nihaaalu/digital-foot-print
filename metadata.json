@@ -1,0 +1,6 @@
+{
+  "name": "Digital Footprint Investigator",
+  "description": "OSINT intelligence and digital footprint analysis platform for authorized cybersecurity investigations, public reconnaissance, and relationship mapping.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
