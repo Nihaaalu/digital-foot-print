@@ -8,6 +8,7 @@ import { lookupGitHubUser } from './osint/githubService.js';
 import { lookupIpInfo } from './osint/ipinfoService.js';
 import { checkAbuseIpDb } from './osint/abuseipdbService.js';
 import { checkVirusTotal } from './osint/virustotalService.js';
+import { lookupWhoisFreaks } from './osint/whoisFreaksService.js';
 import { runUsernameInvestigation } from './osint/usernameEngine/usernameRunner.js';
 
 dotenv.config();
@@ -53,6 +54,7 @@ apiRouter.get('/health/integrations', (req: Request, res: Response) => {
     ipinfo: !!process.env.IPINFO_TOKEN,
     abuseipdb: !!process.env.ABUSEIPDB_API_KEY,
     virustotal: !!process.env.VIRUSTOTAL_API_KEY,
+    whoisfreaks: !!process.env.WHOISFREAKS_API_KEY,
     gemini: !!process.env.GEMINI_API_KEY,
   });
 });
@@ -74,6 +76,7 @@ apiRouter.get('/settings/status', async (req: Request, res: Response) => {
   const ipinfoToken = process.env.IPINFO_TOKEN;
   const abuseKey = process.env.ABUSEIPDB_API_KEY;
   const vtKey = process.env.VIRUSTOTAL_API_KEY;
+  const whoisKey = process.env.WHOISFREAKS_API_KEY;
 
   let ghRemaining = 60;
   let ghLimit = 60;
@@ -110,6 +113,15 @@ apiRouter.get('/settings/status', async (req: Request, res: Response) => {
         configured: true,
         status: 'CONNECTED',
         description: 'Unified OSINT platform signatures (1,000+ public sites, anti-bot verifiers, confidence scoring)',
+      },
+      whoisfreaks: {
+        name: 'WhoisFreaks Live WHOIS API',
+        type: 'FREE_ACCOUNT_API',
+        configured: !!whoisKey,
+        status: whoisKey ? 'CONNECTED' : 'NOT_CONFIGURED',
+        description: whoisKey
+          ? 'WhoisFreaks Live WHOIS API Active (500 free credits tier)'
+          : 'Optional free API key missing. Add WHOISFREAKS_API_KEY to enable live WHOIS registration lookup.',
       },
       ipinfo: {
         name: 'IPinfo Lite',
@@ -181,6 +193,19 @@ apiRouter.post('/settings/test', async (req: Request, res: Response) => {
         success: gh.status === 'FOUND',
         message: `GitHub API responded successfully. Rate limit remaining: ${gh.rateLimit.remaining}/${gh.rateLimit.limit}`,
         rateLimit: gh.rateLimit,
+      });
+    }
+
+    if (service === 'whoisfreaks') {
+      if (!process.env.WHOISFREAKS_API_KEY) {
+        return res.status(400).json({ success: false, message: 'WHOISFREAKS_API_KEY is not configured in environment' });
+      }
+      const wf = await lookupWhoisFreaks('example.com');
+      return res.json({
+        service,
+        success: wf.status === 'FOUND' || wf.status === 'RATE_LIMITED',
+        message: wf.status === 'FOUND' ? `WhoisFreaks API verified (Registrar: ${wf.registrar})` : wf.error,
+        data: wf,
       });
     }
 

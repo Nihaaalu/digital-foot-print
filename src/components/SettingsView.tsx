@@ -102,7 +102,7 @@ export const SettingsView: React.FC = () => {
         <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
         <p className="leading-relaxed">
           <strong>Security notice:</strong> All API requests and credentials
-          (GitHub, IPinfo, AbuseIPDB, VirusTotal) are executed server-side. No
+          (GitHub, IPinfo, AbuseIPDB, VirusTotal, WhoisFreaks) are executed server-side. No
           sensitive credentials or private tokens are sent to the client browser.
         </p>
       </div>
@@ -196,7 +196,7 @@ export const SettingsView: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {['github', 'ipinfo', 'abuseipdb', 'virustotal'].includes(
+                    {['github', 'whoisfreaks', 'ipinfo', 'abuseipdb', 'virustotal'].includes(
                       key
                     ) && (
                       <button

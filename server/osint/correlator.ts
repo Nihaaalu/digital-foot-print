@@ -315,10 +315,10 @@ export function buildCorrelatedGraph(target: { raw: string; type: string; normal
     }
   }
 
-  // 6. Process RDAP
+  // 6. Process RDAP & WhoisFreaks
   if (results.rdap?.status === 'FOUND' && results.rdap.data) {
     const rdap = results.rdap.data;
-    if (rdap.registrar) {
+    if (rdap.registrar && !rdap.registrar.toLowerCase().includes('unknown') && !rdap.registrar.toLowerCase().includes('privacy')) {
       const regId = `org:registrar:${rdap.registrar.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
       addNode({
         id: regId,
@@ -334,6 +334,75 @@ export function buildCorrelatedGraph(target: { raw: string; type: string; normal
         },
       });
       addEdge(rootId, regId, 'REGISTERED_WITH');
+    }
+  }
+
+  // WhoisFreaks WHOIS processing (correlated with target domain)
+  if (results.whoisFreaks?.status === 'FOUND') {
+    const whois = results.whoisFreaks;
+    const domainNodeId = `domain:${whois.domain}`;
+
+    // Registrar node (if not already added or to enrich)
+    if (whois.registrar && whois.registrar !== 'Not available' && !whois.registrar.toLowerCase().includes('unknown')) {
+      const regId = `org:registrar:${whois.registrar.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+      addNode({
+        id: regId,
+        type: 'ORGANIZATION',
+        label: `Registrar: ${whois.registrar}`,
+        value: whois.registrar,
+        confidence: 'CONFIRMED',
+        source: 'WhoisFreaks Live WHOIS',
+        timestamp: whois.timestamp,
+        metadata: {
+          createdDate: whois.createdDate,
+          expiryDate: whois.expiryDate,
+          ianaId: whois.registrarIanaId,
+        },
+      });
+      addEdge(rootId !== domainNodeId ? rootId : domainNodeId, regId, 'REGISTERED_WITH');
+    }
+
+    // Nameservers (up to 4)
+    if (Array.isArray(whois.nameServers)) {
+      for (const ns of whois.nameServers.slice(0, 4)) {
+        const nsDomain = ns.toLowerCase().replace(/\.$/, '');
+        const nsNodeId = `domain:ns:${nsDomain}`;
+        addNode({
+          id: nsNodeId,
+          type: 'DOMAIN',
+          label: `NS: ${nsDomain}`,
+          value: nsDomain,
+          confidence: 'CONFIRMED',
+          source: 'WhoisFreaks Live WHOIS',
+          timestamp: whois.timestamp,
+        });
+        addEdge(domainNodeId, nsNodeId, 'NAMESERVER');
+      }
+    }
+
+    // Registrant Organization if public and unredacted
+    if (
+      whois.registrant?.organization &&
+      !whois.registrant.organization.toLowerCase().includes('privacy') &&
+      !whois.registrant.organization.toLowerCase().includes('redacted') &&
+      !whois.registrant.organization.toLowerCase().includes('whoisguard') &&
+      !whois.registrant.organization.toLowerCase().includes('not available')
+    ) {
+      const orgId = `org:registrant:${whois.registrant.organization.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+      addNode({
+        id: orgId,
+        type: 'ORGANIZATION',
+        label: `Registrant: ${whois.registrant.organization}`,
+        value: whois.registrant.organization,
+        confidence: 'CONFIRMED',
+        source: 'WhoisFreaks Live WHOIS',
+        timestamp: whois.timestamp,
+        metadata: {
+          country: whois.registrant.country,
+          city: whois.registrant.city,
+        },
+      });
+      addEdge(domainNodeId, orgId, 'REGISTERED_BY');
     }
   }
 

@@ -132,6 +132,44 @@ export interface UsernameAnalysisResult {
   sourcesUsed?: string[];
 }
 
+export type WhoisFreaksStatus =
+  | 'FOUND'
+  | 'NOT_FOUND'
+  | 'RATE_LIMITED'
+  | 'CONFIGURATION_MISSING'
+  | 'TIMEOUT'
+  | 'ERROR';
+
+export interface WhoisFreaksContact {
+  organization?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  email?: string;
+}
+
+export interface WhoisFreaksAnalysis {
+  source: 'WhoisFreaks';
+  type: 'whois';
+  status: WhoisFreaksStatus;
+  domain: string;
+  timestamp: string;
+  sourceUrl?: string;
+  registrar?: string;
+  registrarIanaId?: string;
+  createdDate?: string;
+  updatedDate?: string;
+  expiryDate?: string;
+  statusCodes?: string[];
+  nameServers?: string[];
+  dnssec?: string;
+  registry?: string;
+  registrant?: WhoisFreaksContact;
+  admin?: WhoisFreaksContact;
+  tech?: WhoisFreaksContact;
+  error?: string;
+}
+
 export interface SourceRecord {
   name: string;
   sourceUrl?: string;
@@ -154,6 +192,7 @@ export interface InvestigationResult {
     email?: any;
     dns?: any;
     rdap?: any;
+    whoisFreaks?: WhoisFreaksAnalysis;
     crtsh?: any;
     tls?: any;
     ipinfo?: any;

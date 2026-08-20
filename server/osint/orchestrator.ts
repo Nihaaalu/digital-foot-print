@@ -12,6 +12,7 @@ import { lookupWaybackMachine } from './waybackService.js';
 import { probeUsername } from './usernameService.js';
 import { analyzeEmail } from './emailService.js';
 import { inspectPassiveHttp } from './passiveHttpService.js';
+import { lookupWhoisFreaks, WhoisFreaksAnalysis } from './whoisFreaksService.js';
 import { buildCorrelatedGraph, CorrelatedGraph } from './correlator.js';
 import { calculateExposureScore, ExposureScoreResult } from './exposureScore.js';
 
@@ -29,6 +30,7 @@ export interface InvestigationResult {
     email?: any;
     dns?: any;
     rdap?: any;
+    whoisFreaks?: WhoisFreaksAnalysis;
     crtsh?: any;
     tls?: any;
     ipinfo?: any;
@@ -136,9 +138,10 @@ export async function runInvestigation(
     const domain = target.type === 'URL' ? target.details.domain! : target.normalized;
     const urlForHttp = target.type === 'URL' ? target.normalized : `https://${domain}`;
 
-    const [dnsRes, rdapRes, crtshRes, tlsRes, httpRes, waybackRes, vtRes] = await Promise.allSettled([
+    const [dnsRes, rdapRes, whoisRes, crtshRes, tlsRes, httpRes, waybackRes, vtRes] = await Promise.allSettled([
       shouldRun('dns') ? resolveDns(domain) : Promise.resolve(null),
       shouldRun('rdap') ? lookupDomainRdap(domain) : Promise.resolve(null),
+      shouldRun('whoisfreaks') || shouldRun('whois') ? lookupWhoisFreaks(domain) : Promise.resolve(null),
       shouldRun('crtsh') ? searchCertificateTransparency(domain) : Promise.resolve(null),
       shouldRun('tls') ? inspectTls(domain) : Promise.resolve(null),
       shouldRun('passiveHttp') ? inspectPassiveHttp(urlForHttp) : Promise.resolve(null),
@@ -171,6 +174,10 @@ export async function runInvestigation(
     if (rdapRes.status === 'fulfilled' && rdapRes.value) {
       modules.rdap = rdapRes.value;
       recordSource(rdapRes.value.source, rdapRes.value.sourceUrl, rdapRes.value.status, 'Registry');
+    }
+    if (whoisRes.status === 'fulfilled' && whoisRes.value) {
+      modules.whoisFreaks = whoisRes.value;
+      recordSource('WhoisFreaks Live WHOIS', whoisRes.value.sourceUrl || 'https://whoisfreaks.com', whoisRes.value.status, 'Domain Registration');
     }
     if (crtshRes.status === 'fulfilled' && crtshRes.value) {
       modules.crtsh = crtshRes.value;
